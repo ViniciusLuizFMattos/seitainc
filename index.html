@@ -1,150 +1,85 @@
 <!DOCTYPE html>
-<html lang="en-us">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Unity Web Player | Seita Inc</title>
-    <link rel="shortcut icon" href="TemplateData/favicon.ico">
-    <link rel="stylesheet" href="TemplateData/style.css">
-  </head>
-  <body>
-    <div id="unity-container" class="unity-desktop">
-      <div id="unity-fullscreen-container">
-        <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
-        <div id="unity-loading-container">
-          <div id="unity-loading-bar">
-            <div id="unity-logo"></div>
-            <div id="unity-progress-bar-empty">
-              <div id="unity-progress-bar-full"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div id="unity-warning"> </div>
-      <div id="unity-footer">
-        <div id="unity-logo-title-footer"></div>
-        <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">Seita Inc</div>
-      </div>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
+  <title>Seita Inc.</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0b0707; overflow: hidden; }
+    /* o jogo ocupa a janela inteira; a interface interna mantém a proporção 16:9 sozinha */
+    #unity-container { position: fixed; inset: 0; }
+    #unity-canvas { display: block; width: 100%; height: 100%; background: #0b0707; outline: none; }
+    #carregando {
+      position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: #0b0707; color: #e6c88a; font-family: Georgia, 'Times New Roman', serif; transition: opacity .4s;
+    }
+    #carregando h1 { font-size: clamp(28px, 6vw, 56px); letter-spacing: .12em; margin: 0 0 24px; text-shadow: 0 0 18px #7a1c1c; }
+    #barra { width: min(420px, 70vw); height: 10px; border: 1px solid #7a4a2a; background: #170b0a; }
+    #progresso { height: 100%; width: 0; background: linear-gradient(90deg, #c23a24, #e8782a); }
+    #dica { margin-top: 14px; font-size: 14px; color: #a58a63; }
+    #tela-cheia {
+      position: absolute; right: 10px; bottom: 10px; width: 36px; height: 36px; border: 1px solid #7a4a2a; border-radius: 6px;
+      background: rgba(23, 11, 10, .7); color: #e6c88a; font-size: 20px; line-height: 1; cursor: pointer; opacity: .55;
+    }
+    #tela-cheia:hover { opacity: 1; }
+    #erro { position: absolute; left: 0; right: 0; top: 0; z-index: 5; display: none; padding: 10px; background: #7a1c1c; color: #fff; font: 14px sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="unity-container">
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="carregando">
+      <h1>SEITA INC.</h1>
+      <div id="barra"><div id="progresso"></div></div>
+      <div id="dica">carregando o culto...</div>
     </div>
-    <script>
-      let canvas = document.querySelector("#unity-canvas");
-      let fullscreenContainer = document.querySelector("#unity-fullscreen-container");
+    <button id="tela-cheia" title="Tela cheia" aria-label="Tela cheia">&#x26F6;</button>
+    <div id="erro"></div>
+  </div>
+  <script>
+    var canvas = document.querySelector("#unity-canvas");
+    var buildUrl = "Build";
+    var loaderUrl = buildUrl + "/out.loader.js";
 
-      // Shows a temporary message banner/ribbon for a few seconds, or
-      // a permanent error message on top of the canvas if type=='error'.
-      // If type=='warning', a yellow highlight color is used.
-      // Modify or remove this function to customize the visually presented
-      // way that non-critical warnings and error messages are presented to the
-      // user.
-      function unityShowBanner(msg, type) {
-        var warningBanner = document.querySelector("#unity-warning");
-        function updateBannerVisibility() {
-          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
-        }
-        var div = document.createElement('div');
-        div.innerHTML = msg;
-        warningBanner.appendChild(div);
-        if (type == 'error') div.style = 'background: red; padding: 10px;';
-        else {
-          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
-          setTimeout(function() {
-            warningBanner.removeChild(div);
-            updateBannerVisibility();
-          }, 5000);
-        }
-        updateBannerVisibility();
-      }
+    function mostrarErro(msg) {
+      var e = document.querySelector("#erro");
+      e.style.display = "block";
+      e.textContent = msg;
+    }
 
-      var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/out.loader.js";
-      var config = {
-        arguments: [],
-        dataUrl: buildUrl + "/out.data",
-        frameworkUrl: buildUrl + "/out.framework.js",
-        codeUrl: buildUrl + "/out.wasm",
-        streamingAssetsUrl: "StreamingAssets",
+    var config = {
+      arguments: [],
+      dataUrl: buildUrl + "/out.data",
+      frameworkUrl: buildUrl + "/out.framework.js",
+      codeUrl: buildUrl + "/out.wasm",
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: "SeitaInc",
+      productName: "Seita Inc",
+      productVersion: "0.1.0",
+      fullscreenElementID: "unity-container",
+      // telas de alta densidade (retina/4K): limita a resolução interna a 2x para não pesar na GPU
+      devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+      // grava em disco (IndexedDB) tudo o que o jogo salva em Application.persistentDataPath
+      autoSyncPersistentDataPath: true,
+      showBanner: function (msg, type) { if (type === "error") mostrarErro(msg); else console.warn(msg); }
+    };
 
-        // If you have a custom web site structure, or want to place multiple Unity build instances on the same page,
-        // you can pass fullscreenElementID: "my-unity-fullscreen-container-id", in this configuration field to
-        // explicitly point to the element tree root that is displayed in fullscreen mode.
-        fullscreenElementID: "unity-fullscreen-container",
-
-        companyName: "SeitaInc",
-        productName: "Seita Inc",
-        productVersion: "0.1.0",
-        showBanner: unityShowBanner,
-        // errorHandler: function(err, url, line) {
-        //    alert("error " + err + " occurred at line " + line);
-        //    // Return 'true' if you handled this error and don't want Unity
-        //    // to process it further, 'false' otherwise.
-        //    return true;
-        // },
-      };
-
-      // By default, Unity keeps WebGL canvas render target size matched with
-      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
-      // Set this to false if you want to decouple this synchronization from
-      // happening inside the engine, and you would instead like to size up
-      // the canvas DOM size and WebGL render target sizes yourself.
-      // config.matchWebGLToCanvasSize = false;
-
-      // If you would like all file writes inside Unity Application.persistentDataPath
-      // directory to automatically persist so that the contents are remembered when
-      // the user revisits the site the next time, uncomment the following line:
-      // config.autoSyncPersistentDataPath = true;
-      // This autosyncing is currently not the default behavior to avoid regressing
-      // existing user projects that might rely on the earlier manual
-      // JS_FileSystem_Sync() behavior, but in future Unity version, this will be
-      // expected to change.
-
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        // Mobile device style: fill the whole browser client area with the game canvas:
-
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-        document.getElementsByTagName('head')[0].appendChild(meta);
-        document.querySelector("#unity-container").className = "unity-mobile";
-        canvas.className = "unity-mobile";
-
-        // To lower canvas resolution on mobile devices to gain some
-        // performance, uncomment the following line:
-        // config.devicePixelRatio = 1;
-
-
-      } else {
-        // Desktop style: Render the game canvas container in a window that can be maximized to fullscreen:
-        fullscreenContainer.style.width = "960px";
-        fullscreenContainer.style.height = "600px";
-      }
-
-
-      var script = document.createElement("script");
-      script.src = loaderUrl;
-      script.onload = () => {
-        const loadingContainer = document.querySelector("#unity-loading-container");
-        const progressBarFull = document.querySelector("#unity-progress-bar-full");
-
-        createUnityInstance(canvas, config, (progress) => {
-          if (progress < 1) {
-            loadingContainer.style.display = "block";
-            progressBarFull.style.width = 100 * progress + "%";
-          } else {
-            loadingContainer.style.display = "none";
-          }
-        }).then((unityInstance) => {
-                document.querySelector("#unity-fullscreen-button").onclick = () => {
-                  unityInstance.SetFullscreen(1);
-                };
-
-              }).catch((message) => {
-                alert(message);
-              });
-            };
-
-      document.body.appendChild(script);
-
-    </script>
-  </body>
+    var script = document.createElement("script");
+    script.src = loaderUrl;
+    script.onload = function () {
+      var carregando = document.querySelector("#carregando");
+      var progresso = document.querySelector("#progresso");
+      createUnityInstance(canvas, config, function (p) {
+        progresso.style.width = (100 * p) + "%";
+      }).then(function (unityInstance) {
+        carregando.style.opacity = "0";
+        setTimeout(function () { carregando.style.display = "none"; }, 450);
+        document.querySelector("#tela-cheia").onclick = function () { unityInstance.SetFullscreen(1); };
+      }).catch(function (message) {
+        mostrarErro(String(message));
+      });
+    };
+    document.body.appendChild(script);
+  </script>
+</body>
 </html>
